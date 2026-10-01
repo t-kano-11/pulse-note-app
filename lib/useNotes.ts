@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Note, NoteInput } from './types';
 import { LocalStorageNoteRepository } from './infrastructure/LocalStorageNoteRepository';
 import { INoteRepository } from './domain/INoteRepository';
+import { filterAndSortNotes } from './domain/FilterNotesUseCase';
+import { extractUniqueTags } from './domain/ExtractAllTagsUseCase';
 
 export function useNotes(repository: INoteRepository = useMemo(() => new LocalStorageNoteRepository(), [])) {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -111,15 +113,15 @@ export function useNotes(repository: INoteRepository = useMemo(() => new LocalSt
     refreshNotes();
   }, [repository, refreshNotes]);
 
-  // Derived state: unique tags list
+  // Derived state: unique tags list via domain use case
   const allTags = useMemo(() => {
-    return Array.from(new Set(notes.flatMap((n) => n.tags || []))).sort();
+    return extractUniqueTags(notes);
   }, [notes]);
 
-  // Derived state: filtered notes via repository method
+  // Derived state: filtered notes via domain use case
   const filteredNotes = useMemo(() => {
-    return repository.findByQueryAndTag(searchQuery, selectedTag);
-  }, [repository, searchQuery, selectedTag, notes]);
+    return filterAndSortNotes(notes, searchQuery, selectedTag, 'all');
+  }, [notes, searchQuery, selectedTag]);
 
   const pinnedNotes = useMemo(() => filteredNotes.filter((n) => n.isPinned), [filteredNotes]);
   const otherNotes = useMemo(() => filteredNotes.filter((n) => !n.isPinned), [filteredNotes]);
